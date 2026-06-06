@@ -41,7 +41,7 @@ export default class extends Extension {
 
       const img = a.querySelector('img');
       const title = (img?.getAttribute('alt') || '').trim() || 'Unknown';
-      const poster = img?.getAttribute('src');
+      const poster = img?.getAttribute('src') || '';
 
       results.push({
         title,
@@ -64,7 +64,7 @@ export default class extends Extension {
 
       const img = a.querySelector('img');
       const title = (img?.getAttribute('alt') || '').trim() || 'Unknown';
-      const poster = img?.getAttribute('src');
+      const poster = img?.getAttribute('src') || '';
 
       results.push({
         title,
@@ -82,7 +82,7 @@ export default class extends Extension {
     const titleEl = doc.querySelector('h1.title.d-title');
     const title = (titleEl?.textContent || '').trim() || 'Unknown';
 
-    const poster = doc.querySelector('.poster img')?.getAttribute('src');
+    const poster = doc.querySelector('.poster img')?.getAttribute('src') || '';
     const desc = doc
       .querySelector('.description, .synopsis, .film-description')
       ?.textContent
@@ -137,7 +137,7 @@ export default class extends Extension {
       const ids =
         a.getAttribute('data-ids') ||
         a.getAttribute('data-link-id') ||
-        null;
+        '';
 
       eps.push({
         title: `Episode ${rawNum || ''}`.trim(),
@@ -156,7 +156,7 @@ export default class extends Extension {
 
   async watch(episode) {
     const extra = episode.extra || {};
-    const ids = extra.ids;
+    const ids = extra.ids || '';
     const hasDub = !!extra.hasDub;
 
     const links = [];
@@ -188,7 +188,8 @@ export default class extends Extension {
 
         const linkId =
           li.getAttribute('data-link-id') ||
-          li.getAttribute('data-ids');
+          li.getAttribute('data-ids') ||
+          '';
         if (!linkId) continue;
 
         const url = decodeIfBase64(linkId);
