@@ -1,0 +1,221 @@
+// ==MiruExtension==
+// @name        AniKoto
+// @version     v0.0.1
+// @author      zaini+copilot
+// @lang        en
+// @icon        https://anikototv.to/favicon.ico
+// @package     anikoto.en.bangumi
+// @type        bangumi
+// @webSite     https://anikototv.to
+// @nsfw        false
+// @tags        anime,english,streaming
+// ==/MiruExtension==
+
+export default class extends Extension {
+  baseUrl = 'https://anikototv.to';
+
+  async requestHtml(pathOrUrl) {
+    const url = pathOrUrl.startsWith('http')
+      ? pathOrUrl
+      : this.baseUrl + pathOrUrl;
+
+    const res = await this.request({
+      url,
+      method: 'GET',
+    });
+
+    const parser = new DOMParser();
+    return parser.parseFromString(res.data ?? res.body ?? res, 'text/html');
+  }
+
+  // search(query, page) -> list of bangumi
+  async search(query, page) {
+    const url = `${this.baseUrl}/filter?keyword=${encodeURIComponent(query)}`;
+    const doc = await this.requestHtml(url);
+
+    const results = [];
+    const anchors = doc.querySelectorAll('a[href*="/watch/"]');
+
+    anchors.forEach(a => {
+      const href = a.getAttribute('href') || '';
+      if (!href.includes('/watch/')) return;
+
+      const img = a.querySelector('img');
+      const title = (img?.getAttribute('alt') || '').trim() || 'Unknown';
+      const poster = img?.getAttribute('src');
+
+      results.push({
+        title,
+        cover: poster ? this.abs(poster) : null,
+        url: this.abs(href),
+      });
+    });
+
+    return results;
+  }
+
+  // latest(page) -> list of bangumi (simple reuse of search with empty query or homepage)
+  async latest(page) {
+    // AniKoto doesn’t have a clean “latest” API, so we just hit the homepage
+    const doc = await this.requestHtml(this.baseUrl);
+    const results = [];
+    const anchors = doc.querySelectorAll('a[href*="/watch/"]');
+
+    anchors.forEach(a => {
+      const href = a.getAttribute('href') || '';
+      if (!href.includes('/watch/')) return;
+
+      const img = a.querySelector('img');
+      const title = (img?.getAttribute('alt') || '').trim() || 'Unknown';
+      const poster = img?.getAttribute('src');
+
+      results.push({
+        title,
+        cover: poster ? this.abs(poster) : null,
+        url: this.abs(href),
+      });
+    });
+
+    return results;
+  }
+
+  // detail(url) -> bangumi detail with episodes
+  async detail(url) {
+    const doc = await this.requestHtml(url);
+
+    const titleEl = doc.querySelector('h1.title.d-title');
+    const title = (titleEl?.textContent || '').trim() || 'Unknown';
+
+    const poster = doc.querySelector('.poster img')?.getAttribute('src');
+    const desc = doc
+      .querySelector('.description, .synopsis, .film-description')
+      ?.textContent
+      ?.trim() || '';
+
+    const episodes = await this.loadEpisodesFromDoc(doc);
+
+    return {
+      title,
+      cover: poster ? this.abs(poster) : null,
+      description: desc,
+      episodes,
+      url,
+    };
+  }
+
+  async loadEpisodesFromDoc(doc) {
+    const eps = [];
+
+    const selectors = [
+      '#episodes ul.episodes',
+      '#episodes',
+      '.episodes',
+      '.ep-list',
+      '.list-episode',
+      '.detail-infor-content',
+    ];
+
+    let container = null;
+    for (const sel of selectors) {
+      container = doc.querySelector(sel);
+      if (container) break;
+    }
+    if (!container) return eps;
+
+    const links = container.querySelectorAll('a[href*="/ep-"]');
+    links.forEach(a => {
+      const href = a.getAttribute('href');
+      if (!href) return;
+
+      let rawNum =
+        (a.getAttribute('data-num') || a.textContent || '').trim();
+      rawNum = rawNum.replace(/[^0-9.]/g, '');
+      const epNum = parseFloat(rawNum) || 0;
+
+      const text = (a.textContent || '').toLowerCase();
+      const hasSub =
+        a.getAttribute('data-sub') === '1' || text.includes('sub');
+      const hasDub =
+        a.getAttribute('data-dub') === '1' || text.includes('dub');
+
+      const ids =
+        a.getAttribute('data-ids') ||
+        a.getAttribute('data-link-id') ||
+        null;
+
+      eps.push({
+        title: `Episode ${rawNum || ''}`.trim(),
+        number: epNum,
+        url: this.abs(href),
+        extra: {
+          hasSub,
+          hasDub,
+          ids,
+        },
+      });
+    });
+
+    return eps;
+  }
+
+  // watch(episode) -> list of stream links
+  async watch(episode) {
+    const extra = episode.extra || {};
+    const ids = extra.ids;
+    const hasDub = !!extra.hasDub;
+
+    const links = [];
+
+    const decodeIfBase64 = (input) => {
+      try {
+        const decoded = atob(input);
+        if (decoded.startsWith('http')) return decoded;
+      } catch (_) {}
+      return input;
+    };
+
+    // SUB
+    if (ids) {
+      const url = decodeIfBase64(ids);
+      links.push({
+        url,
+        quality: 'SUB',
+        isM3u8: url.includes('.m3u8'),
+      });
+    }
+
+    // DUB
+    if (hasDub) {
+      const doc = await this.requestHtml(episode.url);
+
+      const lis = doc.querySelectorAll('li');
+      for (const li of lis) {
+        const text = (li.textContent || '').toLowerCase();
+        if (!text.includes('dub')) continue;
+
+        const linkId =
+          li.getAttribute('data-link-id') ||
+          li.getAttribute('data-ids');
+        if (!linkId) continue;
+
+        const url = decodeIfBase64(linkId);
+        links.push({
+          url,
+          quality: 'DUB',
+          isM3u8: url.includes('.m3u8'),
+        });
+        break;
+      }
+    }
+
+    return links;
+  }
+
+  abs(url) {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('//')) return 'https:' + url;
+    if (url.startsWith('/')) return this.baseUrl + url;
+    return this.baseUrl + '/' + url;
+  }
+}
