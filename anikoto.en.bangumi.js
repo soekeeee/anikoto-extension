@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name        AniKoto
-// @version     v0.0.3
+// @version     v0.0.4
 // @author      zaini+copilot
 // @lang        en
 // @icon        https://anikototv.to/favicon.ico
@@ -45,9 +45,9 @@ export default class extends Extension {
         const poster = img?.getAttribute('src') || '';
 
         results.push({
-          title: title,
+          title: title || 'Unknown',
           cover: poster ? this.abs(poster) : '',
-          url: this.abs(href),
+          url: this.abs(href) || '',
         });
       });
 
@@ -72,9 +72,9 @@ export default class extends Extension {
         const poster = img?.getAttribute('src') || '';
 
         results.push({
-          title: title,
+          title: title || 'Unknown',
           cover: poster ? this.abs(poster) : '',
-          url: this.abs(href),
+          url: this.abs(href) || '',
         });
       });
 
@@ -86,7 +86,8 @@ export default class extends Extension {
 
   async detail(url) {
     try {
-      const doc = await this.requestHtml(url);
+      const detailUrl = url || '';
+      const doc = await this.requestHtml(detailUrl);
 
       const titleEl = doc.querySelector('h1.title.d-title');
       const title = titleEl?.textContent || 'Unknown';
@@ -97,19 +98,19 @@ export default class extends Extension {
       const episodes = await this.loadEpisodesFromDoc(doc);
 
       return {
-        title: title,
+        title: title || 'Unknown',
         cover: poster ? this.abs(poster) : '',
-        description: desc,
-        episodes: episodes,
-        url: url,
+        description: desc || '',
+        episodes: episodes || [],
+        url: detailUrl || '',
       };
     } catch (e) {
       return {
-        title: 'Error',
+        title: 'Unknown',
         cover: '',
         description: '',
         episodes: [],
-        url: url,
+        url: url || '',
       };
     }
   }
@@ -149,13 +150,13 @@ export default class extends Extension {
       const ids = a.getAttribute('data-ids') || a.getAttribute('data-link-id') || '';
 
       eps.push({
-        title: `Episode ${rawNum}`,
+        title: `Episode ${rawNum}` || 'Unknown',
         number: epNum,
-        url: this.abs(href),
+        url: this.abs(href) || '',
         extra: {
           hasSub: hasSub,
           hasDub: hasDub,
-          ids: ids,
+          ids: ids || '',
         },
       });
     });
@@ -172,42 +173,45 @@ export default class extends Extension {
 
     const decodeIfBase64 = (input) => {
       try {
-        const decoded = atob(input);
+        const decoded = atob(input || '');
         if (decoded.startsWith('http')) return decoded;
       } catch (e) {
         // ignore
       }
-      return input;
+      return input || '';
     };
 
     if (ids) {
       const url = decodeIfBase64(ids);
       links.push({
-        url: url,
+        url: url || '',
         quality: 'SUB',
-        isM3u8: url.includes('.m3u8'),
+        isM3u8: (url || '').includes('.m3u8'),
       });
     }
 
     if (hasDub) {
       try {
-        const doc = await this.requestHtml(episode.url);
-        const lis = doc.querySelectorAll('li');
+        const episodeUrl = episode.url || '';
+        if (episodeUrl) {
+          const doc = await this.requestHtml(episodeUrl);
+          const lis = doc.querySelectorAll('li');
 
-        for (const li of lis) {
-          const text = (li.textContent || '').toLowerCase();
-          if (!text.includes('dub')) continue;
+          for (const li of lis) {
+            const text = (li.textContent || '').toLowerCase();
+            if (!text.includes('dub')) continue;
 
-          const linkId = li.getAttribute('data-link-id') || li.getAttribute('data-ids') || '';
-          if (!linkId) continue;
+            const linkId = li.getAttribute('data-link-id') || li.getAttribute('data-ids') || '';
+            if (!linkId) continue;
 
-          const url = decodeIfBase64(linkId);
-          links.push({
-            url: url,
-            quality: 'DUB',
-            isM3u8: url.includes('.m3u8'),
-          });
-          break;
+            const url = decodeIfBase64(linkId);
+            links.push({
+              url: url || '',
+              quality: 'DUB',
+              isM3u8: (url || '').includes('.m3u8'),
+            });
+            break;
+          }
         }
       } catch (e) {
         // ignore dub errors
@@ -219,9 +223,10 @@ export default class extends Extension {
 
   abs(url) {
     if (!url) return '';
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('//')) return 'https:' + url;
-    if (url.startsWith('/')) return this.baseUrl + url;
-    return this.baseUrl + '/' + url;
+    const urlStr = url || '';
+    if (urlStr.startsWith('http')) return urlStr;
+    if (urlStr.startsWith('//')) return 'https:' + urlStr;
+    if (urlStr.startsWith('/')) return this.baseUrl + urlStr;
+    return this.baseUrl + '/' + urlStr;
   }
 }
