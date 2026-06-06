@@ -1,14 +1,11 @@
 // ==MiruExtension==
 // @name        AniKoto
 // @version     v0.1.0
-// @author      zaini+copilot
+// @author      zaini
 // @lang        en
-// @icon        https://anikototv.to/favicon.ico
 // @package     anikoto
 // @type        bangumi
-// @webSite     https://anikototv.to
 // @nsfw        false
-// @tags        anime,english,streaming
 // ==/MiruExtension==
 
 export default class extends Extension {
