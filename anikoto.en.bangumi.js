@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name        AniKoto
-// @version     v0.0.8
+// @version     v0.0.9
 // @author      zaini+copilot
 // @lang        en
 // @icon        https://anikototv.to/favicon.ico
@@ -52,8 +52,8 @@ export default class extends Extension {
         if (!href || !href.includes('/watch/')) return;
 
         const img = a.querySelector('img');
-        const alt = this.safe(img?.getAttribute('alt'));
-        const src = this.safe(img?.getAttribute('src'));
+        const alt = img ? this.safe(img.getAttribute('alt')) : '';
+        const src = img ? this.safe(img.getAttribute('src')) : '';
         
         const title = alt.trim() ? alt.trim() : 'Unknown';
         const poster = src.trim() || '';
@@ -82,8 +82,8 @@ export default class extends Extension {
         if (!href || !href.includes('/watch/')) return;
 
         const img = a.querySelector('img');
-        const alt = this.safe(img?.getAttribute('alt'));
-        const src = this.safe(img?.getAttribute('src'));
+        const alt = img ? this.safe(img.getAttribute('alt')) : '';
+        const src = img ? this.safe(img.getAttribute('src')) : '';
         
         const title = alt.trim() ? alt.trim() : 'Unknown';
         const poster = src.trim() || '';
@@ -107,15 +107,15 @@ export default class extends Extension {
       const doc = await this.requestHtml(detailUrl);
 
       const titleEl = doc.querySelector('h1.title.d-title');
-      const titleText = this.safe(titleEl?.textContent);
+      const titleText = titleEl ? this.safe(titleEl.textContent) : '';
       const title = titleText.trim() ? titleText.trim() : 'Unknown';
 
       const posterEl = doc.querySelector('.poster img');
-      const posterSrc = this.safe(posterEl?.getAttribute('src'));
+      const posterSrc = posterEl ? this.safe(posterEl.getAttribute('src')) : '';
       const poster = posterSrc.trim() || '';
 
       const descEl = doc.querySelector('.description, .synopsis, .film-description');
-      const descText = this.safe(descEl?.textContent);
+      const descText = descEl ? this.safe(descEl.textContent) : '';
       const description = descText.trim() || '';
 
       const episodes = await this.loadEpisodesFromDoc(doc);
@@ -162,13 +162,17 @@ export default class extends Extension {
       const href = this.safe(a.getAttribute('href'));
       if (!href) return;
 
-      let rawNum = this.safe(a.getAttribute('data-num') || a.textContent || '').trim();
+      const dataNum = a.getAttribute('data-num');
+      const aText = a.textContent || '';
+      let rawNum = this.safe(dataNum || aText || '').trim();
       rawNum = rawNum.replace(/[^0-9.]/g, '');
       const epNum = parseFloat(rawNum) || 0;
 
-      const text = this.safe(a.textContent || '').toLowerCase();
-      const hasSub = a.getAttribute('data-sub') === '1' || text.includes('sub');
-      const hasDub = a.getAttribute('data-dub') === '1' || text.includes('dub');
+      const text = this.safe(aText || '').toLowerCase();
+      const dataSubAttr = a.getAttribute('data-sub');
+      const dataDubAttr = a.getAttribute('data-dub');
+      const hasSub = dataSubAttr === '1' || text.includes('sub');
+      const hasDub = dataDubAttr === '1' || text.includes('dub');
 
       const idsAttr = this.safe(a.getAttribute('data-ids'));
       const linkIdAttr = this.safe(a.getAttribute('data-link-id'));
@@ -191,7 +195,8 @@ export default class extends Extension {
 
   async watch(episode) {
     const extra = episode.extra || {};
-    const ids = this.safe(extra.ids).trim();
+    const idsValue = extra.ids || '';
+    const ids = this.safe(idsValue).trim();
     const hasDub = !!extra.hasDub;
 
     const links = [];
@@ -224,12 +229,13 @@ export default class extends Extension {
           const lis = doc.querySelectorAll('li');
 
           for (const li of lis) {
-            const text = this.safe(li.textContent || '').toLowerCase();
+            const liText = li.textContent || '';
+            const text = this.safe(liText).toLowerCase();
             if (!text.includes('dub')) continue;
 
             const linkIdAttr = this.safe(li.getAttribute('data-link-id'));
-            const idsAttr = this.safe(li.getAttribute('data-ids'));
-            const linkId = linkIdAttr || idsAttr || '';
+            const idsAttr2 = this.safe(li.getAttribute('data-ids'));
+            const linkId = linkIdAttr || idsAttr2 || '';
             if (!linkId) continue;
 
             const url = decodeIfBase64(linkId);
