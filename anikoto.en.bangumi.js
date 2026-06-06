@@ -1,10 +1,10 @@
 // ==MiruExtension==
 // @name        AniKoto
-// @version     v0.0.1
+// @version     v0.0.2
 // @author      zaini+copilot
 // @lang        en
 // @icon        https://anikototv.to/favicon.ico
-// @package     anikoto.en.bangumi
+// @package     anikoto_en_bangumi
 // @type        bangumi
 // @webSite     https://anikototv.to
 // @nsfw        false
@@ -41,12 +41,12 @@ export default class extends Extension {
 
       const img = a.querySelector('img');
       const title = (img?.getAttribute('alt') || '').trim() || 'Unknown';
-      const poster = img?.getAttribute('src') || '';
+      const poster = (img?.getAttribute('src') || '').trim();
 
       results.push({
-        title,
-        cover: poster ? this.abs(poster) : '',
-        url: this.abs(href),
+        title: String(title),
+        cover: String(poster ? this.abs(poster) : ''),
+        url: String(this.abs(href)),
       });
     });
 
@@ -64,12 +64,12 @@ export default class extends Extension {
 
       const img = a.querySelector('img');
       const title = (img?.getAttribute('alt') || '').trim() || 'Unknown';
-      const poster = img?.getAttribute('src') || '';
+      const poster = (img?.getAttribute('src') || '').trim();
 
       results.push({
-        title,
-        cover: poster ? this.abs(poster) : '',
-        url: this.abs(href),
+        title: String(title),
+        cover: String(poster ? this.abs(poster) : ''),
+        url: String(this.abs(href)),
       });
     });
 
@@ -82,20 +82,20 @@ export default class extends Extension {
     const titleEl = doc.querySelector('h1.title.d-title');
     const title = (titleEl?.textContent || '').trim() || 'Unknown';
 
-    const poster = doc.querySelector('.poster img')?.getAttribute('src') || '';
-    const desc = doc
+    const posterSrc = doc.querySelector('.poster img')?.getAttribute('src') || '';
+    const cover = posterSrc ? this.abs(posterSrc) : '';
+    const description = (doc
       .querySelector('.description, .synopsis, .film-description')
-      ?.textContent
-      ?.trim() || '';
+      ?.textContent || '').trim();
 
     const episodes = await this.loadEpisodesFromDoc(doc);
 
     return {
-      title,
-      cover: poster ? this.abs(poster) : '',
-      description: desc,
-      episodes,
-      url,
+      title: String(title),
+      cover: String(cover),
+      description: String(description),
+      episodes: episodes || [],
+      url: String(url),
     };
   }
 
@@ -134,15 +134,16 @@ export default class extends Extension {
       const hasDub =
         a.getAttribute('data-dub') === '1' || text.includes('dub');
 
-      const ids =
+      const ids = String(
         a.getAttribute('data-ids') ||
         a.getAttribute('data-link-id') ||
-        '';
+        ''
+      );
 
       eps.push({
-        title: `Episode ${rawNum || ''}`.trim(),
+        title: String(`Episode ${rawNum || ''}`.trim()),
         number: epNum,
-        url: this.abs(href),
+        url: String(this.abs(href)),
         extra: {
           hasSub,
           hasDub,
@@ -156,30 +157,30 @@ export default class extends Extension {
 
   async watch(episode) {
     const extra = episode.extra || {};
-    const ids = extra.ids || '';
+    const ids = String(extra.ids || '');
     const hasDub = !!extra.hasDub;
 
     const links = [];
 
     const decodeIfBase64 = (input) => {
       try {
-        const decoded = atob(input);
+        const decoded = atob(String(input));
         if (decoded.startsWith('http')) return decoded;
       } catch (_) {}
-      return input;
+      return String(input);
     };
 
     if (ids) {
       const url = decodeIfBase64(ids);
       links.push({
-        url,
+        url: String(url),
         quality: 'SUB',
         isM3u8: url.includes('.m3u8'),
       });
     }
 
     if (hasDub) {
-      const episodeUrl = episode.url || '';
+      const episodeUrl = String(episode.url || '');
       if (episodeUrl) {
         const doc = await this.requestHtml(episodeUrl);
 
@@ -188,15 +189,16 @@ export default class extends Extension {
           const text = (li.textContent || '').toLowerCase();
           if (!text.includes('dub')) continue;
 
-          const linkId =
+          const linkId = String(
             li.getAttribute('data-link-id') ||
             li.getAttribute('data-ids') ||
-            '';
+            ''
+          );
           if (!linkId) continue;
 
           const url = decodeIfBase64(linkId);
           links.push({
-            url,
+            url: String(url),
             quality: 'DUB',
             isM3u8: url.includes('.m3u8'),
           });
