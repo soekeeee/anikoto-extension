@@ -120,7 +120,7 @@ export default class extends Extension {
 
     const links = container.querySelectorAll('a[href*="/ep-"]');
     links.forEach(a => {
-      const href = a.getAttribute('href');
+      const href = a.getAttribute('href') || '';
       if (!href) return;
 
       let rawNum =
@@ -179,26 +179,29 @@ export default class extends Extension {
     }
 
     if (hasDub) {
-      const doc = await this.requestHtml(episode.url);
+      const episodeUrl = episode.url || '';
+      if (episodeUrl) {
+        const doc = await this.requestHtml(episodeUrl);
 
-      const lis = doc.querySelectorAll('li');
-      for (const li of lis) {
-        const text = (li.textContent || '').toLowerCase();
-        if (!text.includes('dub')) continue;
+        const lis = doc.querySelectorAll('li');
+        for (const li of lis) {
+          const text = (li.textContent || '').toLowerCase();
+          if (!text.includes('dub')) continue;
 
-        const linkId =
-          li.getAttribute('data-link-id') ||
-          li.getAttribute('data-ids') ||
-          '';
-        if (!linkId) continue;
+          const linkId =
+            li.getAttribute('data-link-id') ||
+            li.getAttribute('data-ids') ||
+            '';
+          if (!linkId) continue;
 
-        const url = decodeIfBase64(linkId);
-        links.push({
-          url,
-          quality: 'DUB',
-          isM3u8: url.includes('.m3u8'),
-        });
-        break;
+          const url = decodeIfBase64(linkId);
+          links.push({
+            url,
+            quality: 'DUB',
+            isM3u8: url.includes('.m3u8'),
+          });
+          break;
+        }
       }
     }
 
@@ -206,7 +209,7 @@ export default class extends Extension {
   }
 
   abs(url) {
-    if (!url) return '';
+    if (!url || typeof url !== 'string') return '';
     if (url.startsWith('http')) return url;
     if (url.startsWith('//')) return 'https:' + url;
     if (url.startsWith('/')) return this.baseUrl + url;
