@@ -28,7 +28,6 @@ export default class extends Extension {
     return parser.parseFromString(res.data ?? res.body ?? res, 'text/html');
   }
 
-  // search(query, page) -> list of bangumi
   async search(query, page) {
     const url = `${this.baseUrl}/filter?keyword=${encodeURIComponent(query)}`;
     const doc = await this.requestHtml(url);
@@ -46,7 +45,7 @@ export default class extends Extension {
 
       results.push({
         title,
-        cover: poster ? this.abs(poster) : null,
+        cover: poster ? this.abs(poster) : '',
         url: this.abs(href),
       });
     });
@@ -54,9 +53,7 @@ export default class extends Extension {
     return results;
   }
 
-  // latest(page) -> list of bangumi (simple reuse of search with empty query or homepage)
   async latest(page) {
-    // AniKoto doesn’t have a clean “latest” API, so we just hit the homepage
     const doc = await this.requestHtml(this.baseUrl);
     const results = [];
     const anchors = doc.querySelectorAll('a[href*="/watch/"]');
@@ -71,7 +68,7 @@ export default class extends Extension {
 
       results.push({
         title,
-        cover: poster ? this.abs(poster) : null,
+        cover: poster ? this.abs(poster) : '',
         url: this.abs(href),
       });
     });
@@ -79,7 +76,6 @@ export default class extends Extension {
     return results;
   }
 
-  // detail(url) -> bangumi detail with episodes
   async detail(url) {
     const doc = await this.requestHtml(url);
 
@@ -96,7 +92,7 @@ export default class extends Extension {
 
     return {
       title,
-      cover: poster ? this.abs(poster) : null,
+      cover: poster ? this.abs(poster) : '',
       description: desc,
       episodes,
       url,
@@ -158,7 +154,6 @@ export default class extends Extension {
     return eps;
   }
 
-  // watch(episode) -> list of stream links
   async watch(episode) {
     const extra = episode.extra || {};
     const ids = extra.ids;
@@ -174,7 +169,6 @@ export default class extends Extension {
       return input;
     };
 
-    // SUB
     if (ids) {
       const url = decodeIfBase64(ids);
       links.push({
@@ -184,7 +178,6 @@ export default class extends Extension {
       });
     }
 
-    // DUB
     if (hasDub) {
       const doc = await this.requestHtml(episode.url);
 
