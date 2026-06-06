@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name        AniKoto
-// @version     v0.0.6
+// @version     v0.0.7
 // @author      zaini+copilot
 // @lang        en
 // @icon        https://anikototv.to/favicon.ico
@@ -43,17 +43,20 @@ export default class extends Extension {
       const anchors = doc.querySelectorAll('a[href*="/watch/"]');
 
       anchors.forEach((a) => {
-        const href = a.getAttribute('href');
+        const href = a.getAttribute('href') || '';
         if (!href || !href.includes('/watch/')) return;
 
         const img = a.querySelector('img');
-        const title = img?.getAttribute('alt') || 'Unknown';
-        const poster = img?.getAttribute('src') || '';
+        const alt = img?.getAttribute('alt');
+        const src = img?.getAttribute('src');
+        
+        const title = (alt && alt.trim()) ? alt.trim() : 'Unknown';
+        const poster = src ? (src.trim() || '') : '';
 
         results.push({
-          title: String(title || 'Unknown'),
-          cover: String(poster ? this.abs(poster) : ''),
-          url: String(this.abs(href) || ''),
+          title: title,
+          cover: poster ? this.abs(poster) : '',
+          url: this.abs(href),
         });
       });
 
@@ -70,17 +73,20 @@ export default class extends Extension {
       const anchors = doc.querySelectorAll('a[href*="/watch/"]');
 
       anchors.forEach((a) => {
-        const href = a.getAttribute('href');
+        const href = a.getAttribute('href') || '';
         if (!href || !href.includes('/watch/')) return;
 
         const img = a.querySelector('img');
-        const title = img?.getAttribute('alt') || 'Unknown';
-        const poster = img?.getAttribute('src') || '';
+        const alt = img?.getAttribute('alt');
+        const src = img?.getAttribute('src');
+        
+        const title = (alt && alt.trim()) ? alt.trim() : 'Unknown';
+        const poster = src ? (src.trim() || '') : '';
 
         results.push({
-          title: String(title || 'Unknown'),
-          cover: String(poster ? this.abs(poster) : ''),
-          url: String(this.abs(href) || ''),
+          title: title,
+          cover: poster ? this.abs(poster) : '',
+          url: this.abs(href),
         });
       });
 
@@ -92,21 +98,27 @@ export default class extends Extension {
 
   async detail(url) {
     try {
-      const detailUrl = String(url || '');
+      const detailUrl = url ? url : '';
       const doc = await this.requestHtml(detailUrl);
 
       const titleEl = doc.querySelector('h1.title.d-title');
-      const title = String(titleEl?.textContent || 'Unknown');
+      const titleText = titleEl?.textContent;
+      const title = (titleText && titleText.trim()) ? titleText.trim() : 'Unknown';
 
-      const poster = String(doc.querySelector('.poster img')?.getAttribute('src') || '');
-      const desc = String(doc.querySelector('.description, .synopsis, .film-description')?.textContent || '');
+      const posterEl = doc.querySelector('.poster img');
+      const posterSrc = posterEl?.getAttribute('src');
+      const poster = posterSrc ? (posterSrc.trim() || '') : '';
+
+      const descEl = doc.querySelector('.description, .synopsis, .film-description');
+      const descText = descEl?.textContent;
+      const description = (descText && descText.trim()) ? descText.trim() : '';
 
       const episodes = await this.loadEpisodesFromDoc(doc);
 
       return {
         title: title,
-        cover: String(poster ? this.abs(poster) : ''),
-        description: desc,
+        cover: poster ? this.abs(poster) : '',
+        description: description,
         episodes: episodes,
         url: detailUrl,
       };
@@ -116,7 +128,7 @@ export default class extends Extension {
         cover: '',
         description: '',
         episodes: [],
-        url: String(url || ''),
+        url: url ? url : '',
       };
     }
   }
@@ -142,7 +154,7 @@ export default class extends Extension {
 
     const links = container.querySelectorAll('a[href*="/ep-"]');
     links.forEach((a) => {
-      const href = a.getAttribute('href');
+      const href = a.getAttribute('href') || '';
       if (!href) return;
 
       let rawNum = (a.getAttribute('data-num') || a.textContent || '').trim();
@@ -153,17 +165,17 @@ export default class extends Extension {
       const hasSub = a.getAttribute('data-sub') === '1' || text.includes('sub');
       const hasDub = a.getAttribute('data-dub') === '1' || text.includes('dub');
 
-      const ids = String(a.getAttribute('data-ids') || a.getAttribute('data-link-id') || '');
-
-      const episodeTitle = rawNum ? `Episode ${rawNum}` : 'Unknown';
+      const idsAttr = a.getAttribute('data-ids');
+      const linkIdAttr = a.getAttribute('data-link-id');
+      const ids = (idsAttr || linkIdAttr || '').trim();
 
       eps.push({
-        title: String(episodeTitle),
+        title: ('Episode ' + rawNum).trim(),
         number: epNum,
-        url: String(this.abs(href) || ''),
+        url: this.abs(href),
         extra: {
-          hasSub: Boolean(hasSub),
-          hasDub: Boolean(hasDub),
+          hasSub: hasSub,
+          hasDub: hasDub,
           ids: ids,
         },
       });
@@ -174,33 +186,34 @@ export default class extends Extension {
 
   async watch(episode) {
     const extra = episode.extra || {};
-    const ids = String(extra.ids || '');
-    const hasDub = Boolean(extra.hasDub || false);
+    const ids = (extra.ids || '').trim ? (extra.ids || '').trim() : (extra.ids || '');
+    const hasDub = !!extra.hasDub;
 
     const links = [];
 
     const decodeIfBase64 = (input) => {
       try {
-        const decoded = atob(String(input || ''));
+        const inputStr = input || '';
+        const decoded = atob(inputStr);
         if (decoded.startsWith('http')) return decoded;
       } catch (e) {
         // ignore
       }
-      return String(input || '');
+      return input || '';
     };
 
     if (ids) {
       const url = decodeIfBase64(ids);
       links.push({
-        url: String(url || ''),
+        url: url || '',
         quality: 'SUB',
-        isM3u8: String(url || '').includes('.m3u8'),
+        isM3u8: (url || '').includes('.m3u8'),
       });
     }
 
     if (hasDub) {
       try {
-        const episodeUrl = String(episode.url || '');
+        const episodeUrl = episode.url || '';
         if (episodeUrl) {
           const doc = await this.requestHtml(episodeUrl);
           const lis = doc.querySelectorAll('li');
@@ -209,14 +222,16 @@ export default class extends Extension {
             const text = (li.textContent || '').toLowerCase();
             if (!text.includes('dub')) continue;
 
-            const linkId = String(li.getAttribute('data-link-id') || li.getAttribute('data-ids') || '');
+            const linkIdAttr = li.getAttribute('data-link-id');
+            const idsAttr = li.getAttribute('data-ids');
+            const linkId = (linkIdAttr || idsAttr || '').trim ? (linkIdAttr || idsAttr || '').trim() : (linkIdAttr || idsAttr || '');
             if (!linkId) continue;
 
             const url = decodeIfBase64(linkId);
             links.push({
-              url: String(url || ''),
+              url: url || '',
               quality: 'DUB',
-              isM3u8: String(url || '').includes('.m3u8'),
+              isM3u8: (url || '').includes('.m3u8'),
             });
             break;
           }
@@ -231,7 +246,8 @@ export default class extends Extension {
 
   abs(url) {
     if (!url) return '';
-    const urlStr = String(url || '');
+    const urlStr = url || '';
+    if (!urlStr) return '';
     if (urlStr.startsWith('http')) return urlStr;
     if (urlStr.startsWith('//')) return 'https:' + urlStr;
     if (urlStr.startsWith('/')) return this.baseUrl + urlStr;
